@@ -41,8 +41,6 @@ jobs:
   miri:
     name: Miri
     runs-on: ubuntu-latest
-    env:
-      MIRIFLAGS: -Zmiri-tag-raw-pointers
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -70,8 +68,8 @@ jobs:
     - name: Update dependencues
       run: cargo update
     - name: Default features
-      run: cargo test --workspace --all-targets
+      run: cargo test --workspace
     - name: All features
-      run: cargo test --workspace --all-targets --all-features
+      run: cargo test --workspace --all-features
     - name: No-default features
-      run: cargo test --workspace --all-targets --no-default-features
+      run: cargo test --workspace --no-default-features

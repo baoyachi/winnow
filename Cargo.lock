@@ -1426,14 +1426,13 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
-version = "0.6.5"
+version = "0.6.6"
 dependencies = [
  "anstream",
  "anstyle",
  "circular",
  "criterion",
  "doc-comment",
- "escargot",
  "is-terminal",
  "lazy_static",
  "lexopt",
