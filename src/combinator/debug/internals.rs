@@ -14,6 +14,7 @@ where
 {
     parser: P,
     name: D,
+    flag: bool,
     call_count: usize,
     i: core::marker::PhantomData<I>,
     o: core::marker::PhantomData<O>,
@@ -27,10 +28,11 @@ where
     D: std::fmt::Display,
 {
     #[inline(always)]
-    pub(crate) fn new(parser: P, name: D) -> Self {
+    pub(crate) fn new(parser: P, name: D, flag: bool) -> Self {
         Self {
             parser,
             name,
+            flag,
             call_count: 0,
             i: Default::default(),
             o: Default::default(),
@@ -47,16 +49,24 @@ where
 {
     #[inline]
     fn parse_next(&mut self, i: &mut I) -> PResult<O, E> {
-        let depth = Depth::new();
-        let original = i.checkpoint();
-        start(*depth, &self.name, self.call_count, i);
+        let option = if self.flag {
+            let depth = Depth::new();
+            let original = i.checkpoint();
+            start(*depth, &self.name, self.call_count, i);
+            Some((depth, original))
+        } else {
+            None
+        };
 
         let res = self.parser.parse_next(i);
-
-        let consumed = i.offset_from(&original);
-        let severity = Severity::with_result(&res);
-        end(*depth, &self.name, self.call_count, consumed, severity);
-        self.call_count += 1;
+        if let Some((depth, original)) = option {
+            if self.flag {
+                let consumed = i.offset_from(&original);
+                let severity = Severity::with_result(&res);
+                end(*depth, &self.name, self.call_count, consumed, severity);
+                self.call_count += 1;
+            }
+        }
 
         res
     }
@@ -167,15 +177,15 @@ pub(crate) fn start<I: Stream>(
     let writer = anstream::stderr();
     let mut writer = writer.lock();
     let _ = writeln!(
-        writer,
-        "{call_column:call_width$} {gutter_style}|{gutter_reset} {input_style}{debug_slice}{input_reset}{eof_style}{eof}{eof_reset}",
-        gutter_style=gutter_style.render(),
-        gutter_reset=gutter_style.render_reset(),
-        input_style=input_style.render(),
-        input_reset=input_style.render_reset(),
-        eof_style=eof_style.render(),
-        eof_reset=eof_style.render_reset(),
-    );
+		writer,
+		"{call_column:call_width$} {gutter_style}|{gutter_reset} {input_style}{debug_slice}{input_reset}{eof_style}{eof}{eof_reset}",
+		gutter_style = gutter_style.render(),
+		gutter_reset = gutter_style.render_reset(),
+		input_style = input_style.render(),
+		input_reset = input_style.render_reset(),
+		eof_style = eof_style.render(),
+		eof_reset = eof_style.render_reset(),
+	);
 }
 
 pub(crate) fn end(
@@ -219,13 +229,13 @@ pub(crate) fn end(
     let writer = anstream::stderr();
     let mut writer = writer.lock();
     let _ = writeln!(
-        writer,
-        "{status_style}{call_column:call_width$}{status_reset} {gutter_style}|{gutter_reset} {status_style}{status}{status_reset}",
-        gutter_style=gutter_style.render(),
-        gutter_reset=gutter_style.render_reset(),
-        status_style=status_style.render(),
-        status_reset=status_style.render_reset(),
-    );
+		writer,
+		"{status_style}{call_column:call_width$}{status_reset} {gutter_style}|{gutter_reset} {status_style}{status}{status_reset}",
+		gutter_style = gutter_style.render(),
+		gutter_reset = gutter_style.render_reset(),
+		status_style = status_style.render(),
+		status_reset = status_style.render_reset(),
+	);
 }
 
 pub(crate) fn result(depth: usize, name: &dyn crate::lib::std::fmt::Display, severity: Severity) {
@@ -257,13 +267,13 @@ pub(crate) fn result(depth: usize, name: &dyn crate::lib::std::fmt::Display, sev
     let writer = anstream::stderr();
     let mut writer = writer.lock();
     let _ = writeln!(
-        writer,
-        "{status_style}{call_column:call_width$}{status_reset} {gutter_style}|{gutter_reset} {status_style}{status}{status_reset}",
-        gutter_style=gutter_style.render(),
-        gutter_reset=gutter_style.render_reset(),
-        status_style=status_style.render(),
-        status_reset=status_style.render_reset(),
-    );
+		writer,
+		"{status_style}{call_column:call_width$}{status_reset} {gutter_style}|{gutter_reset} {status_style}{status}{status_reset}",
+		gutter_style = gutter_style.render(),
+		gutter_reset = gutter_style.render_reset(),
+		status_style = status_style.render(),
+		status_reset = status_style.render_reset(),
+	);
 }
 
 fn column_widths() -> (usize, usize) {

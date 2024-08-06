@@ -41,14 +41,15 @@ pub fn trace<I: Stream, O, E>(
     name: impl crate::lib::std::fmt::Display,
     parser: impl Parser<I, O, E>,
 ) -> impl Parser<I, O, E> {
-    #[cfg(feature = "debug")]
+    #[cfg(all(feature = "debug", debug_assertions))]
     {
-        internals::Trace::new(parser, name)
+        if let Some(flag) = option_env!("WINNOW_DEBUG") {
+            return internals::Trace::new(parser, name, flag.parse::<bool>().unwrap_or_default());
+        }
+        return internals::Trace::new(parser, name, false);
     }
-    #[cfg(not(feature = "debug"))]
-    {
-        parser
-    }
+    #[cfg(any(not(feature = "debug"), not(debug_assertions)))]
+    TraceEmpty::new(parser, name)
 }
 
 #[cfg_attr(not(feature = "debug"), allow(unused_variables))]
@@ -56,11 +57,15 @@ pub(crate) fn trace_result<T, E>(
     name: impl crate::lib::std::fmt::Display,
     res: &Result<T, ErrMode<E>>,
 ) {
-    #[cfg(feature = "debug")]
+    #[cfg(all(feature = "debug", debug_assertions))]
     {
-        let depth = internals::Depth::existing();
-        let severity = internals::Severity::with_result(res);
-        internals::result(*depth, &name, severity);
+        if let Some(flag) = option_env!("WINNOW_DEBUG") {
+            if flag.parse::<bool>().unwrap_or_default() {
+                let depth = internals::Depth::existing();
+                let severity = internals::Severity::with_result(res);
+                internals::result(*depth, &name, severity);
+            }
+        }
     }
 }
 
@@ -93,4 +98,47 @@ fn example() {
             .with_env("CLICOLOR_FORCE", "1"),
     )
     .test("assets/trace.svg", [cmd.as_str()]);
+}
+
+pub(crate) struct TraceEmpty<P, D, I, O, E>
+where
+    P: Parser<I, O, E>,
+    I: Stream,
+    D: std::fmt::Display,
+{
+    parser: P,
+    _name: D,
+    i: core::marker::PhantomData<I>,
+    o: core::marker::PhantomData<O>,
+    e: core::marker::PhantomData<E>,
+}
+
+impl<P, D, I, O, E> TraceEmpty<P, D, I, O, E>
+where
+    P: Parser<I, O, E>,
+    I: Stream,
+    D: std::fmt::Display,
+{
+    #[inline(always)]
+    pub(crate) fn new(parser: P, name: D) -> Self {
+        Self {
+            parser,
+            _name: name,
+            i: Default::default(),
+            o: Default::default(),
+            e: Default::default(),
+        }
+    }
+}
+
+impl<P, D, I, O, E> Parser<I, O, E> for TraceEmpty<P, D, I, O, E>
+where
+    P: Parser<I, O, E>,
+    I: Stream,
+    D: std::fmt::Display,
+{
+    #[inline]
+    fn parse_next(&mut self, i: &mut I) -> crate::PResult<O, E> {
+        self.parser.parse_next(i)
+    }
 }
