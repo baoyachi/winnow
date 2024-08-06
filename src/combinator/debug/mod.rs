@@ -49,7 +49,7 @@ pub fn trace<I: Stream, O, E>(
         return internals::Trace::new(parser, name, false);
     }
     #[cfg(any(not(feature = "debug"), not(debug_assertions)))]
-    TraceEmpty::new(parser, name)
+    parser
 }
 
 #[cfg_attr(not(feature = "debug"), allow(unused_variables))]
@@ -98,47 +98,4 @@ fn example() {
             .with_env("CLICOLOR_FORCE", "1"),
     )
     .test("assets/trace.svg", [cmd.as_str()]);
-}
-
-pub(crate) struct TraceEmpty<P, D, I, O, E>
-where
-    P: Parser<I, O, E>,
-    I: Stream,
-    D: std::fmt::Display,
-{
-    parser: P,
-    _name: D,
-    i: core::marker::PhantomData<I>,
-    o: core::marker::PhantomData<O>,
-    e: core::marker::PhantomData<E>,
-}
-
-impl<P, D, I, O, E> TraceEmpty<P, D, I, O, E>
-where
-    P: Parser<I, O, E>,
-    I: Stream,
-    D: std::fmt::Display,
-{
-    #[inline(always)]
-    pub(crate) fn new(parser: P, name: D) -> Self {
-        Self {
-            parser,
-            _name: name,
-            i: Default::default(),
-            o: Default::default(),
-            e: Default::default(),
-        }
-    }
-}
-
-impl<P, D, I, O, E> Parser<I, O, E> for TraceEmpty<P, D, I, O, E>
-where
-    P: Parser<I, O, E>,
-    I: Stream,
-    D: std::fmt::Display,
-{
-    #[inline]
-    fn parse_next(&mut self, i: &mut I) -> crate::PResult<O, E> {
-        self.parser.parse_next(i)
-    }
 }
